@@ -1,0 +1,17 @@
+{
+  "name": "young-sons-app",
+  "version": "1.0.0",
+  "description": "Young Sons Records landing page",
+  "main": "index.js",
+  "scripts": {
+    "compile:sass": "node-sass sass/main.scss css/style.css -w"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "node-sass": "^4.13.1"
+  },
+  "dependencies": {
+    "axios": "^0.19.2"
+  }
+}

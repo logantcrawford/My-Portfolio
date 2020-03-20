@@ -1,0 +1,58 @@
+@mixin clearfix {
+    // Appends a psudo element after the element that will clear then clear the problematic floats. 
+    &::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+}
+
+@mixin abs_center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+// Media Query Manager
+/*
+0px - 600px: Phone
+600px - 900px: Tablet Portrait
+900px - 1200px: Tablet Landscape
+1200px - 1800px; Normal Styles
+1800px + : Big Screens
+*/
+
+/*
+$breakpoint argument choices:
+-- phone
+-- tab-port
+-- tab-land
+-- big-desktop
+
+1em = 16px
+
+ORDER: Base + typography > General layout + Grid > page layout > components
+*/
+@mixin respond($breakpoint) {
+    @if $breakpoint == phone {
+        @media (max-width: 37.5em) {
+            @content
+        };
+    }
+    @if $breakpoint == tab-port {
+        @media (max-width: 56.25em) {
+            @content
+        };
+    }
+    @if $breakpoint == tab-land {
+        @media (max-width: 75em) {
+            @content
+        };
+    }
+    @if $breakpoint == big-desktop {
+        @media (min-width: 112.5em) {
+            @content
+        };
+    }
+}

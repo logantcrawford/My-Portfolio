@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<body onload="initialize()">
+
+<div style="text-align:center;">
+    <h1>Whack-o-Mole</h1>
+    <button onclick="reset()">Clear</button>
+    <button onclick="start()">Start Game</button>
+    <button onclick="stop()">Stop Game</button>
+    <button onclick="outdoor()">Try Outdoor Mode!</button>
+    <!-- the images for the mole and the hill -->
+    <img id="molehill" src="img/mole-hill.png" alt="mole hill" width="15" height="10">
+    <img id="molechar" src="img/mole-char.png" alt="mole char" width="20" height="30">
+    <br>
+    <p>Score:&nbsp;</p>
+    <p id="info">Loading...</p>
+    <canvas id="canvas" width="300" height="300" style="border:1px solid #000000;"></canvas>
+</div>
+
+
+<script>
+
+// Displays text in the info box
+function info(txt) {
+    document.getElementById("info").innerHTML = txt;
+}
+
+// JavaScript does not have classes but Constructors that have a similar function.
+// Note how methods are stored as attributes. The "this" may remind of "self" in Python or "this" in Java but works differently. (See note on addEventListener in gamefield).
+// This constructor generates coordinates and provides them with some useful utility functions.
+function Coords(x,y) {
+    if (this.outdoortf == false){ // This is breaking the code
+        this.x = x;
+        this.y = y;
+        // set the coords to a given values x and y
+        this.setCoords = function (x,y) {
+            this.x = x;
+            this.y = y;
+        }
+        // compute the Euclidean distance between this coordinate pair and another coordinate pair
+        this.edist = function(other) {
+            dx = this.y-other.y;
+            dy = this.x-other.x;
+            return Math.sqrt(dx**2+dy**2);
+        }
+        // generate a string representation of this coordinate pair
+        this.toTxt = function(){ 
+
+            return "("+this.x+","+this.y+")";
+        }
+    }
+    else{
+        this.x = x;
+        this.y = y;
+        this.setCoords = function (x,y) {
+            this.x = x;
+            this.y = y;
+        }
+        this.edist = function(other) {
+            dx = this.y-other.y;
+            dy = this.x-other.x;
+            return Math.sqrt(dx**2+dy**2);
+        }
+        this.toTxt = function(){ 
+            // This should convert coordinates to on screen coordinates
+            this.x = ((lng + 180) * (300 / 360));
+            this.y = (((lat * -1) + 90) * (300/ 180));
+            return "("+this.x+","+this.y+")";
+        }
+    }      
+}
+
+
+// Another way to generate objects, especially if we need just one, is to simply define it.
+// The gamefield object stores all information about the game, and contains all methods related to the game itself.
+var gamefield = {
+    currloc : new Coords(0,0), // the player's position
+    molechar : document.getElementById("molechar"), // the image representing the mole
+    molehill : document.getElementById("molehill"), // the image representing a molehill
+    mhills : [], // a list of locations where the mole successfully dug.
+    score : 0, // the player's score goes up when they drive the mole away
+    hit : false, // when the mole was disturbed by the player it disappears
+    running : false, // when the game is running the mole is active
+    mpos : new Coords(300,300), // the mole's position
+    width : 300, // canvas width
+    height : 300, // canvas height
+    ctx : null, // the canvas drawing object (shortcut)
+    updint : null, // interval timer for the screen update
+    moleint : null, // interval timer for the mole
+    outdoortf: false,
+    // initializes the gamefield so it reacts to timers touch and mouse gestures
+    init : function() {
+        if (outdoor == false) {
+            // A good screen rate is 1/25 Hz
+            this.updint = setInterval(function() {gamefield.update();}, 40);
+            // The mole needs 1 second to dig a hill (extend for outdoors).
+            this.moleint = setInterval(function() {gamefield.molemv();}, 1000);
+            this.ctx = document.getElementById("canvas").getContext("2d");
+            // note that we cannot give the gamefield.follow function to the event listener, because we would lose the gamefield's context in that way. By wrapping into an outer function, the gamefield context (and not the canvas) is the context within which follow is called. (Careful: this is JavaScript specific!)
+            document.getElementById("canvas").addEventListener("mousemove", function(e){ gamefield.follow(e);});
+            // On a mobile phone we have touch events.
+            document.getElementById("canvas").addEventListener("touchmove", function(e){ gamefield.follow(e);});
+        }
+        else {
+
+        }
+    },
+    // Resets the game to its initial state.
+    reset : function() {
+        this.running = false;
+        this.mhills = [];
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.score = 0;
+    },
+    // Starts or resumes the game.
+    start : function() {
+        this.running = true;
+    },
+    // Stops the game.
+    stop : function() {
+        this.running = false;
+    },
+    outdoor : function() {
+        this.running = false;
+        this.mhills = [];
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.score = 0;
+        this.outdoortf = true;
+    },
+    // Called whenever the mouse is moved. Updates the current location.
+    // If the mouse is close to the mole and it has not been driven away before, it gets hit and the player's score increases.
+    follow : function (e) {
+        var rect = canvas.getBoundingClientRect();
+        this.currloc.setCoords(e.clientX-rect.left,e.clientY-rect.top);
+        if (! this.hit && this.currloc.edist(this.mpos) < 20) {
+            this.hit = true;
+            this.score += 10;
+        }
+    },
+    // This function is called by the mole's timer. If the game is running and the mole has not been hit, it has successfully dug a new hill, otherwise it forgets the poking. Then it tries another location. 
+    molemv : function() {
+        if (this.running) {
+            if (! this.hit) {
+                // add the moles current position to the list of hills
+                this.mhills.push(this.mpos);
+            } else {
+                this.hit = false;
+            }
+            this.mpos = new Coords(Math.floor(Math.random()*this.width), Math.floor(Math.random()*this.height));
+        }
+    },
+    // This method draws the canvas. 
+    update : function() {
+        if (outdoor == false) {
+            // clears the region
+            this.ctx.clearRect(0, 0, this.width, this.height);
+            // draws the user's position
+            this.ctx.beginPath();
+            this.ctx.arc(this.currloc.x, this.currloc.y, 2, 0, 2 * Math.PI);
+            this.ctx.stroke();
+            // displays the current score
+            info(this.score);
+            // if the mole is hit it disappears, otherwise it is drawn.
+            if (! this.hit) {
+                this.ctx.drawImage(this.molechar,this.mpos.x,this.mpos.y);
+            }
+            // draws all the hills.
+            for (var i = 0; i < this.mhills.length; i++) {
+                var hill = this.mhills[i];
+                this.ctx.drawImage(this.molehill,hill.x,hill.y);
+            }
+        }
+        else {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(showPosition);
+                // clears the region
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                // draws the user's position
+                this.ctx.beginPath();
+                this.ctx.arc(this.position.coords.latitude.x, this.position.coords.longitude.y, 2, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                // displays the current score
+                info(this.score);
+                // if the mole is hit it disappears, otherwise it is drawn.
+                if (! this.hit) {
+                    this.ctx.drawImage(this.molechar,this.mpos.x,this.mpos.y);
+                }
+                // draws all the hills.
+                for (var i = 0; i < this.mhills.length; i++) {
+                    var hill = this.mhills[i];
+                    this.ctx.drawImage(this.molehill,hill.x,hill.y);
+                }
+            } 
+            else { 
+                x.innerHTML = "Geolocation is not supported by this browser.";
+            }
+        }
+    }
+}
+
+// button events
+
+// Resets the game
+function reset() {
+    console.log("clear pressed");
+    gamefield.reset();
+}
+
+// (Re-)starts the game: the mole starts digging
+function start() {
+    console.log("start pressed");
+    gamefield.start();
+}
+
+// Stops the game: the mole stops digging
+function stop() {
+    console.log("stop pressed");
+    gamefield.stop();
+}
+
+// Stops the game: the mole stops digging and the game switches to outdoor mode.
+function outdoor() {    
+    console.log("outdoor mode pressed");
+    gamefield.outdoor();
+}
+
+// Initializes the playing field.
+function initialize() {
+    console.log("initializing");
+    gamefield.init();
+}
+
+</script>
+
+</body>
+</html>
